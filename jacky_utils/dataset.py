@@ -1,4 +1,7 @@
 import numpy as np
+import torch
+import torch.nn.functional as F
+from torch.utils.data import Dataset, Subset
 
 class Normalization:
     def normalize(self, x):
@@ -68,3 +71,56 @@ def tensor_to_image(img, norm: Normalization, convert_color):
         new_image[:, :, 2] = img[:, :, 0]
         img = new_image
     return img
+
+
+def random_subset(dataset, size, seed=None):
+    assert size <= len(dataset), 'subset size cannot larger than dataset'
+    np.random.seed(seed)
+    indexes = np.arange(len(dataset))
+    np.random.shuffle(indexes)
+    indexes = indexes[:size]
+    return Subset(dataset, indexes)
+
+
+def resize_image(img: torch.Tensor, height: int, width: int):
+    return F.interpolate(img, size=(height, width), mode='bilinear', align_corners=False)
+
+
+def downsampling(img: torch.Tensor, down_scale):
+    H, W = img.size()[2:4]
+    return F.interpolate(img, size=(int(H / down_scale), int(W / down_scale)), mode='bilinear', align_corners=False)
+
+
+def upsampling(img: torch.Tensor, up_scale):
+    H, W = img.size()[2:4]
+    return F.interpolate(img, size=(int(H * up_scale), int(W * up_scale)), mode='bilinear', align_corners=False)
+
+
+class MeanStdCalculator:
+    def __init__(self, channel):
+        self._channel = channel
+        self._sqrt_mean = torch.zeros(channel, 1)
+        self._mean = torch.zeros(channel, 1)
+        self._n = 0
+
+    def add(self, X):
+        X = X.permute(1, 0, 2)
+        channel, batch, length = X.size()
+        total_length = batch * length
+        X = X.reshape(channel, total_length)
+
+        scale_1 = self._n / (self._n + total_length)
+        scale_2 = total_length / (self._n + total_length)
+
+        self._sqrt_mean = scale_1 * self._sqrt_mean + \
+            scale_2 * X.pow(2).mean(dim=1).unsqueeze(1)
+        self._mean = scale_1 * self._mean + \
+            scale_2 * X.mean(dim=1).unsqueeze(1)
+
+        self._n += total_length
+
+    def mean(self):
+        return self._mean.reshape(-1)
+
+    def std(self):
+        return torch.sqrt(self._sqrt_mean - self._mean.pow(2)).reshape(-1)

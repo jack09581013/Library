@@ -1,10 +1,11 @@
 import sys
 import pickle
 import datetime
+import numpy as np
 from colorama import Fore, Style
 
 
-def print_progress(message, rate):
+def print_progress(message: str, rate: float):
     '''Pring progress'''
     if rate < 0: rate = 0
     if rate > 1: rate = 1
@@ -14,12 +15,12 @@ def print_progress(message, rate):
     sys.stdout.flush()
 
 
-def save(obj, filename):
+def save(obj, filename: str):
     with open(filename, 'wb') as file:
         pickle.dump(obj, file)
 
 
-def load(filename):
+def load(filename: str):
     with open(filename, 'rb') as file:
         return pickle.load(file)
 
@@ -38,13 +39,14 @@ class Timer:
             print('Elapsed:', datetime.datetime.now() - self.current_time)
 
     @staticmethod
-    def timespan_str(timespan):
+    def timespan_str(timespan: datetime.timedelta):
         total = timespan.seconds
         second = total % 60 + timespan.microseconds / 1e+06
         total //= 60
         minute = int(total % 60)
         total //= 60
-        return f'{minute:02d}:{second:05.2f}'
+        hour = int(total % 60)
+        return f'{hour:02d}:{minute:02d}:{second:05.2f}'
 
 
 class ThresholdColor:
@@ -54,7 +56,7 @@ class ThresholdColor:
         self.th3 = th3
         self.th4 = th4
 
-    def get_color(self, value):
+    def get_color(self, value) -> Fore:
         if value >= self.th1:
             return Fore.RED
         elif value >= self.th2:
@@ -65,3 +67,13 @@ class ThresholdColor:
             return Fore.CYAN
         else:
             return Fore.GREEN
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x + 1e-08))
+
+
+def tanh(x):
+    ex = np.exp(x + 1e-08)
+    nex = np.exp(-x + 1e-08)
+    return (ex - nex) / (ex + nex)
