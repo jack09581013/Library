@@ -5,6 +5,31 @@ import jacky_utils
 
 
 class Profile:
+    """Profile object manages models.
+
+    import jacky_utils.pytorch_model.loss as loss
+    class Losses:
+        def __init__(self, device):
+            self.VGG_19 = loss.vgg_19(device)
+            self.MSE_loss = torch.nn.MSELoss()
+            self.SmoothL1Loss = torch.nn.SmoothL1Loss()
+            self.L1_Loss = torch.nn.L1Loss()
+            self.MS_SSIM = loss.MS_SSIM()
+            self.SSIM = loss.SSIM()
+
+
+    class UNet_v1(Profile):
+        def get_model(self):
+            return unet_v1.model.UNet_v1()
+
+        def train_model(self, X, Y, dataset_info, current_version):
+            enhanced = self.used_model(X)
+            total_loss = self.losses.SmoothL1Loss(enhanced, Y)
+            return total_loss
+
+        def produce_result(self, X, dataset_info):
+            return self.used_model(X)
+    """
     def __init__(self, config):
         os.makedirs(self.version_file_path(), exist_ok=True)
         self.config = config
@@ -25,7 +50,7 @@ class Profile:
         if version is None:
             if verbose:
                 print('Find latest version')
-            version = Profile.get_latest_version(self.version_file_path(), '.pth')
+            version = Profile.get_latest_version(self.version_file_path(), '.pt')
 
         if version is None:
             if verbose:
@@ -34,15 +59,15 @@ class Profile:
         else:
             if verbose:
                 print('Using version:', version)
-            pth_file = self.model_file_name(version)
+            pt_file = self.model_file_name(version)
 
-            if os.path.exists(pth_file):
+            if os.path.exists(pt_file):
                 if verbose:
-                    print('Load version model:', pth_file)
+                    print('Load version model:', pt_file)
                 model.load_state_dict(torch.load(
-                    pth_file, map_location=self.config.device))
+                    pt_file, map_location=self.config.device))
             else:
-                raise FileNotFoundError(f'Cannot find neural network file: {pth_file}')
+                raise FileNotFoundError(f'Cannot find neural network file: {pt_file}')
 
         return version, model
 
@@ -111,7 +136,7 @@ class Profile:
             os.remove(file)
 
     def model_file_name(self, version):
-        return os.path.join(self.version_file_path(), f'{self}-{version}.pth')
+        return os.path.join(self.version_file_path(), f'{self}-{version}.pt')
 
     def history_file_name(self, version, rank=None, load_merge=True):
         if load_merge:

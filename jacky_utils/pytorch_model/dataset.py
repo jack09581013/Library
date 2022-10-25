@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, Subset
 
+
 class Normalization:
     def normalize(self, x):
         raise NotImplementedError()
@@ -58,11 +59,11 @@ COLOR_RGB2BGR = 'COLOR_RGB2BGR'
 COLOR_BGR2RGB = 'COLOR_BGR2RGB'
 
 
-def tensor_to_numpy(img):
+def tensor_to_numpy(img: torch.Tensor):
     return img.data.cpu().numpy().transpose(1, 2, 0)
 
 
-def tensor_to_image(img, norm: Normalization, convert_color):
+def tensor_to_image(img: torch.Tensor, norm: Normalization, convert_color: str):
     img = norm.invert_normalize(tensor_to_numpy(img)).clip(0, 255).astype('uint8')
     if convert_color in [COLOR_RGB2BGR, COLOR_BGR2RGB]:
         new_image = np.zeros(img.shape, dtype='uint8')
@@ -73,7 +74,7 @@ def tensor_to_image(img, norm: Normalization, convert_color):
     return img
 
 
-def random_subset(dataset, size, seed=None):
+def random_subset(dataset: Dataset, size: int, seed=None):
     assert size <= len(dataset), 'subset size cannot larger than dataset'
     np.random.seed(seed)
     indexes = np.arange(len(dataset))
@@ -97,25 +98,39 @@ def upsampling(img: torch.Tensor, up_scale):
 
 
 class MeanStdCalculator:
-    def __init__(self, channel):
+    """
+    train_dataset = Dataset()
+    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+    tbar = tqdm(range(train_loader))
+    for batch_index, (X, Y, dataset_info) in enumerate(tbar):
+        B, C, H, W = X.size()
+        X_calculator.add(X.reshape(B, C, H * W))
+        B, C, H, W = Y.size()
+        Y_calculator.add(Y.reshape(B, C, H * W))
+
+    print(f'X mean: {X_calculator.mean()}')
+    print(f'X std: {X_calculator.std()}')
+    print()
+    """
+    def __init__(self, channel: int):
         self._channel = channel
         self._sqrt_mean = torch.zeros(channel, 1)
         self._mean = torch.zeros(channel, 1)
         self._n = 0
 
-    def add(self, X):
-        X = X.permute(1, 0, 2)
-        channel, batch, length = X.size()
+    def add(self, x: torch.Tensor):
+        x = x.permute(1, 0, 2)
+        channel, batch, length = x.size()
         total_length = batch * length
-        X = X.reshape(channel, total_length)
+        x = x.reshape(channel, total_length)
 
         scale_1 = self._n / (self._n + total_length)
         scale_2 = total_length / (self._n + total_length)
 
         self._sqrt_mean = scale_1 * self._sqrt_mean + \
-            scale_2 * X.pow(2).mean(dim=1).unsqueeze(1)
+            scale_2 * x.pow(2).mean(dim=1).unsqueeze(1)
         self._mean = scale_1 * self._mean + \
-            scale_2 * X.mean(dim=1).unsqueeze(1)
+            scale_2 * x.mean(dim=1).unsqueeze(1)
 
         self._n += total_length
 

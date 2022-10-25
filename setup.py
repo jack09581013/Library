@@ -15,5 +15,5 @@ setup(name='jacky_utils',
       author='Ruei-Ping Wang (Jacky)',
       license='MIT',
       packages=['jacky_utils'],
-      install_requires=['colorama', 'numpy'],
+      install_requires=['colorama', 'numpy', 'tqdm'],
       zip_safe=False)
