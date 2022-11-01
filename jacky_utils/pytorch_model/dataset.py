@@ -110,32 +110,57 @@ class MeanStdCalculator:
 
     print(f'X mean: {X_calculator.mean()}')
     print(f'X std: {X_calculator.std()}')
+    print(f'X min: {X_calculator.min()}')
+    print(f'X max: {X_calculator.max()}')
     print()
     """
-    def __init__(self, channel: int):
-        self._channel = channel
-        self._sqrt_mean = torch.zeros(channel, 1)
-        self._mean = torch.zeros(channel, 1)
-        self._n = 0
 
-    def add(self, x: torch.Tensor):
-        x = x.permute(1, 0, 2)
-        channel, batch, length = x.size()
+    def __init__(self, channel):
+        self._channel = channel
+        self._sqrt_mean = torch.zeros(channel)
+        self._mean = torch.zeros(channel)
+        self._n = 0
+        self._min = None
+        self._max = None
+
+    def add(self, X):
+        X = X.permute(1, 0, 2)
+        channel, batch, length = X.size()
         total_length = batch * length
-        x = x.reshape(channel, total_length)
+        X = X.reshape(channel, total_length)
 
         scale_1 = self._n / (self._n + total_length)
         scale_2 = total_length / (self._n + total_length)
 
         self._sqrt_mean = scale_1 * self._sqrt_mean + \
-            scale_2 * x.pow(2).mean(dim=1).unsqueeze(1)
+                          scale_2 * X.pow(2).mean(dim=1)
         self._mean = scale_1 * self._mean + \
-            scale_2 * x.mean(dim=1).unsqueeze(1)
+                     scale_2 * X.mean(dim=1)
 
         self._n += total_length
 
+        min_v = X.min(dim=1).values
+        if self._min is None:
+            self._min = min_v
+        else:
+            idx = self._min > min_v
+            self._min[idx] = min_v[idx]
+
+        max_v = X.max(dim=1).values
+        if self._max is None:
+            self._max = max_v
+        else:
+            idx = self._max < max_v
+            self._max[idx] = max_v[idx]
+
     def mean(self):
-        return self._mean.reshape(-1)
+        return self._mean
 
     def std(self):
-        return torch.sqrt(self._sqrt_mean - self._mean.pow(2)).reshape(-1)
+        return torch.sqrt(self._sqrt_mean - self._mean.pow(2))
+
+    def min(self):
+        return self._min
+
+    def max(self):
+        return self._max
