@@ -27,6 +27,7 @@ class ExampleDataset(Dataset):
 
 
 def eval_model():
+    torch.backends.cudnn.benchmark = True
     config = get_config()
     version, model = config.profile.load_model()
     config.profile.set_used_model(model)

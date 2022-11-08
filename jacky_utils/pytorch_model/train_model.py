@@ -36,10 +36,10 @@ class ExampleDataset(Dataset):
 
 
 def main():
+    torch.backends.cudnn.benchmark = True
     config = get_config()
 
     if config.multi_gpu:
-        torch.backends.cudnn.benchmark = True
         os.environ['CUDA_VISIBLE_DEVICES'] = config.ddp_cuda_devices
         # world_size = torch.cuda.device_count()  # number of gpu
         world_size = config.get_multi_gpu_device_count()  # number of gpu
